@@ -2,25 +2,25 @@
 
 api.py: Docker helper functions for Singularity in Python
 
-Copyright (c) 2016-2017, Vanessa Sochat. All rights reserved. 
+Copyright (c) 2016-2017, Vanessa Sochat. All rights reserved.
 
 "Singularity" Copyright (c) 2016, The Regents of the University of California,
 through Lawrence Berkeley National Laboratory (subject to receipt of any
 required approvals from the U.S. Dept. of Energy).  All rights reserved.
- 
+
 This software is licensed under a customized 3-clause BSD license.  Please
 consult LICENSE file distributed with the sources of this project regarding
 your rights to use or distribute this software.
- 
+
 NOTICE.  This Software was developed under funding from the U.S. Department of
 Energy and the U.S. Government consequently retains certain rights. As such,
 the U.S. Government has been granted for itself and others acting on its
 behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software
 to reproduce, distribute copies to the public, prepare derivative works, and
-perform publicly and display publicly, and to permit other to do so. 
+perform publicly and display publicly, and to permit other to do so.
 
 '''
-        
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
@@ -80,7 +80,7 @@ class DockerApiConnection(ApiConnection):
         super(DockerApiConnection, self).__init__(**kwargs)
         if 'image' in kwargs:
             self.load_image(kwargs['image'])
-        
+
 
     def assemble_uri(self):
         '''re-assemble the image uri, for components defined.
@@ -111,7 +111,7 @@ class DockerApiConnection(ApiConnection):
 
 
     def update_token(self,response=None,auth=None):
-        '''update_token uses HTTP basic authentication to get a token for 
+        '''update_token uses HTTP basic authentication to get a token for
         Docker registry API V2 operations. We get here if a 401 is
         returned for a request. https://docs.docker.com/registry/spec/auth/token/
         '''
@@ -186,7 +186,7 @@ class DockerApiConnection(ApiConnection):
         registry = self.registry
         if registry == None:
             registry = self.api_base
-        
+
         registry = add_http(registry) # make sure we have a complete url
 
         base = "%s/%s/%s/%s/tags/list" %(registry,self.api_version,self.namespace,self.repo_name)
@@ -206,7 +206,7 @@ class DockerApiConnection(ApiConnection):
 
 
     def get_manifest(self,old_version=False):
-        '''get_manifest should return an image manifest for a particular repo and tag. 
+        '''get_manifest should return an image manifest for a particular repo and tag.
         The image details are extracted when the client is generated.
         :param old_version: return version 1 (for cmd/entrypoint), default False
         '''
@@ -221,10 +221,10 @@ class DockerApiConnection(ApiConnection):
         else:
             base = "%s/%s" %(base,self.repo_tag)
         bot.verbose("Obtaining manifest: %s" %base)
-    
+
         headers = self.headers
         if old_version == True:
-            headers['Accept'] = 'application/json' 
+            headers['Accept'] = 'application/json'
 
         response = self.get(base,headers=self.headers)
         try:
@@ -242,7 +242,7 @@ class DockerApiConnection(ApiConnection):
 
     def get_layer(self,image_id,download_folder=None,prefix=None):
         '''get_layer will download an image layer (.tar.gz) to a specified download folder.
-        :param download_folder: if specified, download to folder. 
+        :param download_folder: if specified, download to folder.
         Otherwise return response with raw data (not recommended)
         '''
         registry = self.registry
@@ -253,8 +253,8 @@ class DockerApiConnection(ApiConnection):
         # The <name> variable is the namespace/repo_name
         base = "%s/%s/%s/%s/blobs/%s" %(registry,self.api_version,self.namespace,self.repo_name,image_id)
         bot.verbose("Downloading layers from %s" %base)
-    
-        if download_folder is None:        
+
+        if download_folder is None:
             download_folder = tempfile.mkdtemp()
 
         download_folder = "%s/%s.tar.gz" %(download_folder,image_id)
@@ -278,8 +278,9 @@ class DockerApiConnection(ApiConnection):
             finished_tar = change_tar_permissions(tar_download,
                                                   suffix=suffix,
                                                   prefix=prefix)
-            os.replace(finished_tar,download_folder)
-        except:
+            bot.verbose3("Done fixing tar permissions")
+            os.rename(finished_tar,download_folder)
+        except OSError:
             bot.error("Cannot untar layer %s, was there a problem with download?" %tar_download)
             sys.exit(1)
         return download_folder
@@ -297,7 +298,7 @@ class DockerApiConnection(ApiConnection):
 
 
     def get_config(self,spec="Entrypoint",delim=None,old_version=False):
-        '''get_config returns a particular spec (default is Entrypoint) 
+        '''get_config returns a particular spec (default is Entrypoint)
         from a VERSION 1 manifest obtained with get_manifest.
         :param manifest: the manifest obtained from get_manifest
         :param spec: the key of the spec to return, default is "Entrypoint"
@@ -363,10 +364,10 @@ def read_digests(manifest):
                 bot.debug("Adding digest %s" %layer[digest_key])
                 digests.append(layer[digest_key])
     return digests
-    
+
 
 def extract_runscript(manifest,includecmd=False):
-    '''create_runscript will write a bash script with default "ENTRYPOINT" 
+    '''create_runscript will write a bash script with default "ENTRYPOINT"
     into the base_dir. If includecmd is True, CMD is used instead. For both.
     if the result is found empty, the other is tried, and then a default used.
     :param manifest: the manifest to use to get the runscript
@@ -379,7 +380,7 @@ def extract_runscript(manifest,includecmd=False):
     if includecmd == True:
         commands.reverse()
     configs = get_configs(manifest,commands,delim=" ")
-    
+
     # Look for non "None" command
     for command in commands:
         if configs[command] is not None:
@@ -408,14 +409,14 @@ def extract_metadata_tar(manifest,image_name,include_env=True,
                         include_labels=True,runscript=None):
     '''extract_metadata_tar will write a tarfile with the environment,
     labels, and runscript. include_env and include_labels should be booleans,
-    and runscript should be None or a string to write to the runscript. 
+    and runscript should be None or a string to write to the runscript.
     '''
     tar_file = None
     files = []
     if include_env or include_labels:
 
         # Extract and add environment
-        if include_env:               
+        if include_env:
             environ = extract_env(manifest)
             if environ not in [None,""]:
                 bot.verbose3('Adding Docker environment to metadata tar')
@@ -448,7 +449,7 @@ def extract_metadata_tar(manifest,image_name,include_env=True,
 
     if len(files) > 0:
         output_folder = get_cache(subfolder="metadata", quiet=True)
-        tar_file = create_tar(files,output_folder)      
+        tar_file = create_tar(files,output_folder)
     else:
         bot.warning("No environment, labels files, or runscript will be included.")
     return tar_file
@@ -464,7 +465,7 @@ def extract_env(manifest):
             environ = "\n".join(environ)
         environ = ["export %s" %x for x in environ.split('\n')]
         environ = "\n".join(environ)
-        bot.verbose3("Found Docker container environment!")    
+        bot.verbose3("Found Docker container environment!")
     return environ
 
 
@@ -497,7 +498,7 @@ def extract_labels(manifest,labelfile=None,prefix=None):
 
     labels = get_config(manifest,'Labels')
     if labels is not None and len(labels) is not 0:
-        bot.verbose3("Found Docker container labels!")    
+        bot.verbose3("Found Docker container labels!")
         if labelfile is not None:
             for key,value in labels.items():
                 key = "%s%s" %(prefix,key)
@@ -507,7 +508,7 @@ def extract_labels(manifest,labelfile=None,prefix=None):
 
 
 def get_config(manifest,spec="Entrypoint",delim=None):
-    '''get_config returns a particular spec (default is Entrypoint) 
+    '''get_config returns a particular spec (default is Entrypoint)
     from a VERSION 1 manifest obtained with get_manifest.
     :param manifest: the manifest obtained from get_manifest
     :param spec: the key of the spec to return, default is "Entrypoint"
