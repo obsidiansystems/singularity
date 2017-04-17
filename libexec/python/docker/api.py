@@ -278,7 +278,7 @@ class DockerApiConnection(ApiConnection):
             finished_tar = change_tar_permissions(tar_download,
                                                   suffix=suffix,
                                                   prefix=prefix)
-            os.rename(finished_tar,download_folder)
+            os.replace(finished_tar,download_folder)
         except:
             bot.error("Cannot untar layer %s, was there a problem with download?" %tar_download)
             sys.exit(1)
